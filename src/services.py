@@ -4,11 +4,12 @@ from rich import print
 import random
 import cloudscraper
 
-from utils.helpers import randomize_user_agent
+from utils.helpers import randomize_user_agent, line, get_ip, save
+from utils.proxies import get_proxies,  proxy_dict
 
 
 
-def discord(username):
+def discord(username, proxy=False):
     #get_ip()
     api = f"https://discord.com/api/v9/unique-username/username-attempt-unauthed"
 
@@ -22,28 +23,33 @@ def discord(username):
             }
     
     for _ in range(3):  # Retry up to 3 times
-        proxy = f"http://127.0.0.1:{random.randint(25000, 25002)}"
-        proxies = {"http": proxy, "https": proxy}
+        proxy = get_proxies()
+        proxies = proxy_dict(proxy)
         print(f"Checking Discord for username: {username}")
         response = requests.post(
                 api, 
                 headers=headers, 
                 json={ "username": username }, 
                 timeout=5,
-                proxies=proxies
+                proxies=proxies if proxy else {}
             )
-        print(proxy)
-        print(response.text)
+        
+        line()
         if response.status_code == 200:
             data = response.json()
             if data and data.get("taken") == False:
                 print(f"[green][+] Username {username} is available on Discord[/green]")
+                save("valids.txt", username)
+                get_ip(proxies if proxy else None)
                 return True
             
         if response.status_code == 429:
             print("[yellow][!] Rate limited, retrying...[/yellow]")
+            get_ip(proxies if proxy else None)
             continue  # Retry on rate limit
 
         print(f"Username {username} is taken on Discord")
+        save("checked.txt", username)
+        get_ip(proxies if proxy else None)
         
         return False
